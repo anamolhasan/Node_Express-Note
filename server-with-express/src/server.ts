@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { Pool } from "pg";
+import { Pool, Result } from "pg";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -213,7 +213,6 @@ app.get('/todos', async(req:Request, res:Response) => {
     })
   }
 })
-
 // todos single GET method
 app.get('/todos/:id', async(req:Request, res:Response) => {
   try {
@@ -242,15 +241,57 @@ app.get('/todos/:id', async(req:Request, res:Response) => {
   }
 })
 // todos PUT method
-app.put('/todos', async(req:Request, res:Response) => {
+app.put('/todos/:id', async(req:Request, res:Response) => {
+  const {user_id, title} = req.body
   try {
-    
+    const result = await pool.query(`
+      UPDATE todos SET user_id = $1, title = $2 WHERE id=$3 RETURNING *
+      `, [user_id,title,req.params.id])
+
+      if(result.rows.length === 0){
+        res.status(404).json({
+          success:false,
+          message:'todos not found'
+        })
+      }else{
+        res.status(201).json({
+          success:true,
+          message:'todos update successfully',
+          data:result.rows[0]
+        })
+      }
   } catch (error:any) {
       res.status(500).json({
       success:false,
       message:error.message
     })
   }
+})
+// todos DELETE method
+app.delete('/todos/:id', async(req:Request, res:Response) => {
+    try {
+      const result = await pool.query(`
+        DELETE FROM todos WHERE id = $1
+        `, [req.params.id])
+
+        if(result.rowCount === 0){
+          res.status(404).json({
+            success:false,
+            message:'todos not found'
+          })
+        }else{
+          res.status(201).json({
+            success:true,
+            message:'todos delete successfully',
+            data:null
+          })
+        }
+    } catch (error:any) {
+      res.status(500).json({
+        success:false,
+        message:error.message
+      })
+    }
 })
 
 
